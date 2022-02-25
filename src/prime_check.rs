@@ -1,50 +1,68 @@
-use std::fmt::LowerHex;
+use std::fmt::{Debug, Display};
+use std::process::Output;
+use std::ops::Sub;
 
-use num_bigint_dig::BigUint;
-use num_bigint_dig::RandBigInt;
-use num_bigint_dig::RandPrime;
-use num_bigint_dig::BigInt;
-use num_bigint_dig::ToBigInt;
-use num_traits::{One, RefNum, Zero};
+use num::{BigUint, BigInt};
+use num::bigint::{ToBigInt, RandBigInt, ToBigUint};
+use num::traits::{One, RefNum, Zero, int};
+use num::Integer;
 use rand::{prelude::ThreadRng, thread_rng};
 
 pub struct PrimeUtils {
-    bit_size: usize,
-    times: usize,
+    bit_size: u64,
     rng: ThreadRng,
+    current_p: Option<BigUint>
 }
 
 type RSAPublicKey = (BigUint, BigUint);
 type RSAPrivateKey = (BigUint, BigUint);
 
 impl PrimeUtils {
-    pub fn new(bit_size: usize) -> Self {
-        let bit_size_f64 = bit_size as f64;
-        let times = (bit_size_f64 / bit_size_f64.ln() / 2_f64) as usize;
-        // println!("Times is {}", &times);
+    pub fn new(bit_size: u64) -> Self {
         Self {
             bit_size,
-            times,
             rng: thread_rng(),
+            current_p: None
         }
     }
 
-    fn is_prime(&mut self, testee: &BigUint) -> bool {
-        let mut count = 0;
-        let one: BigUint = One::one();
-        let testee_minus_one: BigUint = testee.clone() - &one;
-        while count < self.times {
-            let rand_num = self.rng.gen_biguint(self.bit_size) % testee;
-            if &rand_num == &one || &rand_num == &testee_minus_one {
-                continue;
+    fn is_prime(&mut self) -> bool {
+        self.current_p.as_ref().map_or(false, |testee| {
+            let mut count = 0;
+            let one: BigUint = One::one();
+            let testee_minus_one: BigUint = testee.clone() - &one;
+            // let prime_factor = Factorization::prime_factor(testee_minus_one).unwrap();
+            while count < 10 {
+                let rand_num = self.rng.gen_biguint(self.bit_size) % testee;
+                if &rand_num == &one || &rand_num == &testee_minus_one {
+                    continue;
+                }
+                if !miller_rabin_single(testee, rand_num.clone()) {
+                    // println!("This is not a prime");
+                    return false;
+                }
+                count += 1;
             }
-            if !miller_rabin_single(testee, rand_num.clone()) {
-                println!("This is not a prime");
-                return false;
-            }
-            count += 1;
+            true
+        })
+    }
+
+    pub fn gen_prime(&mut self) -> BigUint {
+        if self.current_p.is_none() {
+            let random_val = self.rng.gen_biguint(self.bit_size);
+            self.current_p = Some(if &random_val % BigUint::from(2_u32) == Zero::zero() {
+                random_val + BigUint::from(1_u32)
+            } else {
+                random_val
+            });
         }
-        true
+        loop {
+            if self.is_prime() {
+                break self.current_p.as_ref().unwrap().clone()
+            } else {
+                self.current_p = Some(self.current_p.as_ref().unwrap() + BigUint::from(2_u32))
+            }
+        }
     }
 
     pub fn gen_key(&mut self) -> (RSAPublicKey, RSAPrivateKey) {
@@ -52,11 +70,14 @@ impl PrimeUtils {
         // ((N, e), (N, d))
         let e = BigUint::from(65537_u32);
         loop {
-            let p = self.rng.gen_prime(self.bit_size);
-            let q = self.rng.gen_prime(self.bit_size);
+            let p = self.gen_prime();
+            let q = self.gen_prime();
+            // let p = self.rng.gen_prime(self.bit_size);
+            // let q = self.rng.gen_prime(self.bit_size);
             let n = &p * &q;
             let phi = &n - &p - &q + BigUint::from(1_u32);
-            let (mut x, _, d) = exgcd(&e, &phi);
+            let result = BigInt::extended_gcd(&e.to_bigint().unwrap(), &phi.to_bigint().unwrap());
+            let (mut x, d) = (result.x, result.gcd);
             if d == One::one() {
                 if x < Zero::zero() {
                     let k = (-&x).to_biguint().unwrap() / &phi + BigUint::from(1_u32);
@@ -75,6 +96,21 @@ impl PrimeUtils {
     }
 }
 
+fn get_rank<T>(testee: &T) -> T
+where
+    T: RefNum<T> + From<u32> + Ord + Clone,
+    for<'a> &'a T: RefNum<T>,
+{
+    let zero = T::from(0_u32);
+    let one = T::from(1_u32);
+    let two = T::from(2_u32);
+    let mut num: T = testee.clone() - &one;
+    while &num % &two == zero {
+        num = num / &two;
+    }
+    num
+}
+
 fn encrypt_uint(private_key: &RSAPublicKey, message: &BigUint) -> BigUint {
     let (n, e) = private_key;
     quick_pow(message.clone(), e.clone(), Some(n.clone()))
@@ -85,14 +121,20 @@ fn decrypt_uint(public_key: &RSAPrivateKey, secret: &BigUint) -> BigUint {
     quick_pow(secret.clone(), d.clone(), Some(n.clone()))
 }
 
+pub fn oct_to_base64(octet: &BigUint) -> String {
+    base64::encode(octet.to_bytes_be())
+}
+
+pub fn base64_to_oct(base64: &str) -> BigUint {
+    BigUint::from_bytes_be(&base64::decode(base64.as_bytes()).unwrap())
+}
+
 pub fn oct_to_str(encoded: BigUint) -> String {
-    let ret = unsafe {
+    unsafe {
         String::from_utf8_unchecked(encoded
             .to_bytes_be()
         )
-    };
-    println!("From oct is: {}", ret);
-    ret    
+    }
 }
 
 fn str_to_oct(to_encode: &str) -> BigUint {
@@ -100,20 +142,36 @@ fn str_to_oct(to_encode: &str) -> BigUint {
 }
 
 pub fn encrypt(private_key: &RSAPublicKey, message: &str) -> String {
-    oct_to_str(encrypt_uint(private_key, &str_to_oct(message)))
+    oct_to_base64(&encrypt_uint(private_key, &str_to_oct(message)))
 }
 
 pub fn decrypt(public_key: &RSAPrivateKey, secret: &str) -> String {
-    oct_to_str(decrypt_uint(public_key, &str_to_oct(secret)))
+    oct_to_str(decrypt_uint(public_key, &base64_to_oct(secret)))
 }
 
 pub fn miller_rabin_single<T>(testee: &T, base: T) -> bool
 where
-    T: RefNum<T> + From<u32> + Ord + Clone,
+    T: RefNum<T> + From<u32> + Ord + Clone + Display,
     for<'a> &'a T: RefNum<T>,
 {
-    let exp: T = testee.clone() - T::from(1_u32);
-    quick_pow(base, exp, Some(testee.clone())) == 1.into()
+    let mut exp: T = get_rank(testee);
+    // println!("testee is {}, rank is {}", &testee, &exp);
+    let one: T = 1.into();
+    let two: T = 2.into();
+    let testee_minus_one = testee - &one;
+    let mut intermediate = quick_pow(base.clone(), exp.clone(), Some(testee.clone()));
+    if intermediate == one {
+        return true;
+    }
+    exp = exp * &two;
+    while &exp <= testee {
+        intermediate = &intermediate * &intermediate % testee;
+        if intermediate == testee_minus_one {
+            return true;
+        }
+        exp = exp * &two;
+    }
+    false
 }
 
 pub fn quick_pow<T>(base: T, mut exp: T, prime: Option<T>) -> T
