@@ -1,10 +1,6 @@
-use std::fmt::{Debug, Display};
-use std::process::Output;
-use std::ops::Sub;
-
 use num::{BigUint, BigInt};
-use num::bigint::{ToBigInt, RandBigInt, ToBigUint};
-use num::traits::{One, RefNum, Zero, int};
+use num::bigint::{ToBigInt, RandBigInt};
+use num::traits::{One, RefNum, Zero};
 use num::Integer;
 use rand::{prelude::ThreadRng, thread_rng};
 
@@ -57,11 +53,10 @@ impl PrimeUtils {
             });
         }
         loop {
+            self.current_p = Some(self.current_p.as_ref().unwrap() + BigUint::from(2_u32));
             if self.is_prime() {
-                break self.current_p.as_ref().unwrap().clone()
-            } else {
-                self.current_p = Some(self.current_p.as_ref().unwrap() + BigUint::from(2_u32))
-            }
+                break self.current_p.as_ref().unwrap().clone(); 
+            } 
         }
     }
 
@@ -72,8 +67,6 @@ impl PrimeUtils {
         loop {
             let p = self.gen_prime();
             let q = self.gen_prime();
-            // let p = self.rng.gen_prime(self.bit_size);
-            // let q = self.rng.gen_prime(self.bit_size);
             let n = &p * &q;
             let phi = &n - &p - &q + BigUint::from(1_u32);
             let result = BigInt::extended_gcd(&e.to_bigint().unwrap(), &phi.to_bigint().unwrap());
@@ -126,7 +119,7 @@ pub fn oct_to_base64(octet: &BigUint) -> String {
 }
 
 pub fn base64_to_oct(base64: &str) -> BigUint {
-    BigUint::from_bytes_be(&base64::decode(base64.as_bytes()).unwrap())
+    BigUint::from_radix_be(&base64::decode(base64.as_bytes()).unwrap(), 256).unwrap()
 }
 
 pub fn oct_to_str(encoded: BigUint) -> String {
@@ -151,7 +144,7 @@ pub fn decrypt(public_key: &RSAPrivateKey, secret: &str) -> String {
 
 pub fn miller_rabin_single<T>(testee: &T, base: T) -> bool
 where
-    T: RefNum<T> + From<u32> + Ord + Clone + Display,
+    T: RefNum<T> + From<u32> + Ord + Clone,
     for<'a> &'a T: RefNum<T>,
 {
     let mut exp: T = get_rank(testee);

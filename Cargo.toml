@@ -8,7 +8,5 @@ edition = "2021"
 [dependencies]
 base64 = "0.13.0"
 num = { version = "0.4.0", features = ["rand"] }
-# num-traits = "0.2.14"
-# num-primes  = "0.3.0"
-# num-bigint-dig = { version = "0.8.0", features = ["prime"] }
 rand = "0.8.4"
+clap = { version = "3", features = ["derive"] }
