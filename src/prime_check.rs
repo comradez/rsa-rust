@@ -122,12 +122,12 @@ where
 
 fn encrypt_uint(private_key: &RSAPublicKey, message: &BigUint) -> BigUint {
     let (n, e) = private_key;
-    quick_pow(message.clone(), e.clone(), Some(n.clone()))
+    message.modpow(e, n)
 }
 
 fn decrypt_uint(public_key: &RSAPrivateKey, secret: &BigUint) -> BigUint {
     let (n, d) = public_key;
-    quick_pow(secret.clone(), d.clone(), Some(n.clone()))
+    secret.modpow(d, n)
 }
 
 pub fn oct_to_base64(octet: &BigUint) -> String {
@@ -158,21 +158,17 @@ pub fn decrypt(public_key: &RSAPrivateKey, secret: &str) -> String {
     oct_to_str(decrypt_uint(public_key, &base64_to_oct(secret)))
 }
 
-pub fn fermat(testee: &BigUint, base: &BigUint) -> bool {
-    quick_pow(base.clone(), testee - BigUint::from(1_u32), Some(testee.clone())) == One::one()
+fn fermat(testee: &BigUint, base: &BigUint) -> bool {
+    base.modpow(&(testee - BigUint::from(1_u32)), testee) == BigUint::from(1_u32)
 }
 
-pub fn miller_rabin_single<T>(testee: &T, base: T) -> bool
-where
-    T: RefNum<T> + From<u32> + Ord + Clone,
-    for<'a> &'a T: RefNum<T>,
+pub fn miller_rabin_single(testee: &BigUint, base: BigUint) -> bool
 {
-    let mut exp: T = get_rank(testee);
-    // println!("testee is {}, rank is {}", &testee, &exp);
-    let one: T = 1.into();
-    let two: T = 2.into();
+    let mut exp = get_rank(testee);
+    let one = BigUint::from(1_u32);
+    let two = &one + &one;
     let testee_minus_one = testee - &one;
-    let mut intermediate = quick_pow(base.clone(), exp.clone(), Some(testee.clone()));
+    let mut intermediate = base.modpow(&exp, testee);
     if intermediate == one {
         return true;
     }
