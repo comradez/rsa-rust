@@ -9,4 +9,5 @@ edition = "2021"
 base64 = "0.13.0"
 num = { version = "0.4.0", features = ["rand"] }
 rand = "0.8.4"
+lazy_static = "1.4.0"
 clap = { version = "3", features = ["derive"] }
