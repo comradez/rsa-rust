@@ -1,14 +1,18 @@
 #![allow(dead_code)]
 #![feature(iter_intersperse)]
+#![feature(test)]
 #[macro_use]
 extern crate lazy_static;
 extern crate clap;
+extern crate test;
 
 use crate::prime_check::{decrypt, encrypt, PrimeUtils};
 use clap::{Parser, Subcommand};
 use convert::{base64_to_key, key_to_base64};
+use bench::{bench_decrypt, bench_encrypt, bench_gen_key};
 use std::io::Read;
 
+mod bench;
 mod convert;
 mod prime_check;
 
@@ -21,9 +25,20 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Generate a pair of RSA keys, `id_rsa` and `id_rsa.pub` under current directory.
     Gen,
-    Encrypt { message: Option<String> },
-    Decrypt { secret: Option<String> },
+    /// Encrypt the input message.
+    Encrypt { 
+        message: Option<String>,
+        #[clap(short, long)]
+        key: Option<String>
+    },
+    Decrypt { 
+        secret: Option<String>,
+        #[clap(short, long)]
+        key: Option<String>
+    },
+    Bench
 }
 
 fn main() -> std::io::Result<()> {
@@ -41,27 +56,34 @@ fn main() -> std::io::Result<()> {
             std::fs::write("id_rsa", key_to_base64(&pri_key).as_bytes())?;
             println!("id_rsa.pub & id_rsa have been generated.");
         }
-        Commands::Encrypt { message } => {
+        Commands::Encrypt { message, key } => {
             let message = message.unwrap_or_else(|| {
                 println!("Please input the message. Ctrl + {} to end.", end_char);
                 let mut content = String::new();
                 std::io::stdin().read_to_string(&mut content).unwrap();
                 content
             });
+            let key_path = key.as_ref().map(|s| s.as_str()).unwrap_or("id_rsa.pub");
             let public_key =
-                base64_to_key(&String::from_utf8(std::fs::read("id_rsa.pub").unwrap()).unwrap());
+                base64_to_key(&String::from_utf8(std::fs::read(key_path).unwrap()).unwrap());
             println!("{}", encrypt(&public_key, &message))
         }
-        Commands::Decrypt { secret } => {
+        Commands::Decrypt { secret, key } => {
             let secret = secret.unwrap_or_else(|| {
                 println!("Please input the secret. Ctrl + {} to end.", end_char);
                 let mut content = String::new();
                 std::io::stdin().read_to_string(&mut content).unwrap();
                 content
             });
+            let key_path = key.as_ref().map(|s| s.as_str()).unwrap_or("id_rsa");
             let private_key =
-                base64_to_key(&String::from_utf8(std::fs::read("id_rsa").unwrap()).unwrap());
+                base64_to_key(&String::from_utf8(std::fs::read(key_path).unwrap()).unwrap());
             print!("\n{}", decrypt(&private_key, &secret))
+        }
+        Commands::Bench => {
+            bench_gen_key();
+            bench_encrypt();
+            bench_decrypt();
         }
     }
     Ok(())

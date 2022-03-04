@@ -275,20 +275,20 @@ fn decrypt_uint(public_key: &RSAPrivateKey, secret: &BigUint) -> BigUint {
     secret.modpow(d, n)
 }
 
-pub fn encrypt(private_key: &RSAPublicKey, message: &str) -> String {
+pub fn encrypt(public_key: &RSAPublicKey, message: &str) -> String {
     let parts = split_len(message, 245);
     parts
         .iter()
-        .map(|message| oct_to_base64(&encrypt_uint(private_key, &str_to_oct(message))))
+        .map(|message| oct_to_base64(&encrypt_uint(public_key, &str_to_oct(message))))
         .intersperse(String::from("-"))
         .collect()
 }
 
-pub fn decrypt(public_key: &RSAPrivateKey, secret: &str) -> String {
+pub fn decrypt(private_key: &RSAPrivateKey, secret: &str) -> String {
     let parts = secret.split('-');
     parts
         .into_iter()
-        .map(|secret| oct_to_str(decrypt_uint(public_key, &base64_to_oct(secret))))
+        .map(|secret| oct_to_str(decrypt_uint(private_key, &base64_to_oct(secret))))
         .collect()
 }
 
