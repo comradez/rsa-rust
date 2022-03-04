@@ -1,10 +1,9 @@
 #[cfg(test)]
 pub mod autobench {
-    use test::bench::Bencher;
-    use crate::prime_check::{PrimeUtils, encrypt, decrypt};
     use crate::convert::{base64_to_key, key_to_base64};
+    use crate::prime_check::{decrypt, encrypt, PrimeUtils};
     use rand::Rng;
-    use std::time::Instant;
+    use test::bench::Bencher;
 
     #[bench]
     pub fn test_gen_key(b: &mut Bencher) {
@@ -13,18 +12,19 @@ pub mod autobench {
             let (pub_key, pri_key) = checker.gen_key();
             println!("public key is {}", key_to_base64(&pub_key));
             println!("private key is {}", key_to_base64(&pri_key));
-        }) 
+        })
     }
 
     #[bench]
     pub fn test_encrypt(b: &mut Bencher) {
-        let public_key = base64_to_key(&String::from_utf8(std::fs::read("id_rsa.pub").unwrap()).unwrap());
+        let public_key =
+            base64_to_key(&String::from_utf8(std::fs::read("id_rsa.pub").unwrap()).unwrap());
         let mut rng = rand::thread_rng();
         const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
             abcdefghijklmnopqrstuvwxyz\
             0123456789)(*&^%$#@!~";
         const LENGTH: u64 = 1000_00;
-        let sequence: String = (0 .. LENGTH)
+        let sequence: String = (0..LENGTH)
             .map(|_| {
                 let idx = rng.gen_range(0..CHARSET.len());
                 CHARSET[idx] as char
@@ -37,14 +37,16 @@ pub mod autobench {
 
     #[bench]
     pub fn test_decrypt(b: &mut Bencher) {
-        let public_key = base64_to_key(&String::from_utf8(std::fs::read("id_rsa.pub").unwrap()).unwrap());
-        let private_key = base64_to_key(&String::from_utf8(std::fs::read("id_rsa").unwrap()).unwrap());
+        let public_key =
+            base64_to_key(&String::from_utf8(std::fs::read("id_rsa.pub").unwrap()).unwrap());
+        let private_key =
+            base64_to_key(&String::from_utf8(std::fs::read("id_rsa").unwrap()).unwrap());
         let mut rng = rand::thread_rng();
         const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
             abcdefghijklmnopqrstuvwxyz\
             0123456789)(*&^%$#@!~";
         const LENGTH: u64 = 1000_00;
-        let sequence: String = (0 .. LENGTH)
+        let sequence: String = (0..LENGTH)
             .map(|_| {
                 let idx = rng.gen_range(0..CHARSET.len());
                 CHARSET[idx] as char
@@ -57,8 +59,8 @@ pub mod autobench {
     }
 }
 
-use crate::prime_check::{PrimeUtils, encrypt, decrypt};
 use crate::convert::{base64_to_key, key_to_base64};
+use crate::prime_check::{decrypt, encrypt, PrimeUtils};
 use rand::Rng;
 use std::time::Instant;
 
@@ -76,13 +78,14 @@ pub fn bench_gen_key() {
 
 pub fn bench_encrypt() {
     println!("----- Begin bench_encrypt -----");
-    let public_key = base64_to_key(&String::from_utf8(std::fs::read("id_rsa.pub").unwrap()).unwrap());
+    let public_key =
+        base64_to_key(&String::from_utf8(std::fs::read("id_rsa.pub").unwrap()).unwrap());
     let mut rng = rand::thread_rng();
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
         abcdefghijklmnopqrstuvwxyz\
         0123456789)(*&^%$#@!~";
-    const LENGTH: u64 = 1000_000;
-    let sequence: String = (0 .. LENGTH)
+    const LENGTH: u64 = 1_000_000;
+    let sequence: String = (0..LENGTH)
         .map(|_| {
             let idx = rng.gen_range(0..CHARSET.len());
             CHARSET[idx] as char
@@ -97,14 +100,15 @@ pub fn bench_encrypt() {
 
 pub fn bench_decrypt() {
     println!("----- Begin bench_decrypt -----");
-    let public_key = base64_to_key(&String::from_utf8(std::fs::read("id_rsa.pub").unwrap()).unwrap());
+    let public_key =
+        base64_to_key(&String::from_utf8(std::fs::read("id_rsa.pub").unwrap()).unwrap());
     let private_key = base64_to_key(&String::from_utf8(std::fs::read("id_rsa").unwrap()).unwrap());
     let mut rng = rand::thread_rng();
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
         abcdefghijklmnopqrstuvwxyz\
         0123456789)(*&^%$#@!~";
-    const LENGTH: u64 = 1000_000;
-    let sequence: String = (0 .. LENGTH)
+    const LENGTH: u64 = 1_000_000;
+    let sequence: String = (0..LENGTH)
         .map(|_| {
             let idx = rng.gen_range(0..CHARSET.len());
             CHARSET[idx] as char

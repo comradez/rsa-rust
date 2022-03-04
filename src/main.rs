@@ -7,9 +7,9 @@ extern crate clap;
 extern crate test;
 
 use crate::prime_check::{decrypt, encrypt, PrimeUtils};
+use bench::{bench_decrypt, bench_encrypt, bench_gen_key};
 use clap::{Parser, Subcommand};
 use convert::{base64_to_key, key_to_base64};
-use bench::{bench_decrypt, bench_encrypt, bench_gen_key};
 use std::io::Read;
 
 mod bench;
@@ -28,17 +28,17 @@ enum Commands {
     /// Generate a pair of RSA keys, `id_rsa` and `id_rsa.pub` under current directory.
     Gen,
     /// Encrypt the input message.
-    Encrypt { 
+    Encrypt {
         message: Option<String>,
         #[clap(short, long)]
-        key: Option<String>
+        key: Option<String>,
     },
-    Decrypt { 
+    Decrypt {
         secret: Option<String>,
         #[clap(short, long)]
-        key: Option<String>
+        key: Option<String>,
     },
-    Bench
+    Bench,
 }
 
 fn main() -> std::io::Result<()> {
@@ -63,7 +63,7 @@ fn main() -> std::io::Result<()> {
                 std::io::stdin().read_to_string(&mut content).unwrap();
                 content
             });
-            let key_path = key.as_ref().map(|s| s.as_str()).unwrap_or("id_rsa.pub");
+            let key_path = key.as_deref().unwrap_or("id_rsa.pub");
             let public_key =
                 base64_to_key(&String::from_utf8(std::fs::read(key_path).unwrap()).unwrap());
             println!("{}", encrypt(&public_key, &message))
@@ -75,7 +75,7 @@ fn main() -> std::io::Result<()> {
                 std::io::stdin().read_to_string(&mut content).unwrap();
                 content
             });
-            let key_path = key.as_ref().map(|s| s.as_str()).unwrap_or("id_rsa");
+            let key_path = key.as_deref().unwrap_or("id_rsa");
             let private_key =
                 base64_to_key(&String::from_utf8(std::fs::read(key_path).unwrap()).unwrap());
             print!("\n{}", decrypt(&private_key, &secret))
